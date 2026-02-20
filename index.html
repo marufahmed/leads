@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leads — Maruf Ahmed</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════ LOGIN SCREEN ══════════════════════ -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">⚡</div>
+      <h1>Leads</h1>
+      <p class="login-sub">Maruf Ahmed · Contractor Outreach</p>
+      <button id="googleSignInBtn" class="btn-google">
+        <svg viewBox="0 0 48 48" width="20" height="20"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.1 6.9 29.3 5 24 5 12.9 5 4 13.9 4 25s8.9 20 20 20c11 0 19.9-8.9 19.9-20 0-1.3-.1-2.6-.3-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 16.1 19 13 24 13c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34.1 6.9 29.3 5 24 5 16.3 5 9.7 9.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.2 0 9.9-1.8 13.5-4.7l-6.2-5.3C29.3 36.6 26.8 37.5 24 37.5c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.8 40.8 16.4 45 24 45z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.7l6.2 5.3C41.8 36.2 44 31 44 25c0-1.3-.1-2.6-.3-3.9z"/></svg>
+        Sign in with Google
+      </button>
+      <p class="login-hint">Your leads data is saved to your account and syncs across devices.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ TOP BAR ═══════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">⚡ Leads</span>
+      <span class="tagline">Maruf Ahmed · Contractor Outreach</span>
+    </div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.7"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <input id="searchInput" type="text" placeholder="Search company, industry, location…" autocomplete="off" />
+      </div>
+      <button id="exportBtn" class="btn btn-ghost" title="Export tracked leads as JSON">⬇ Export</button>
+      <button id="themeToggle" class="btn btn-ghost" title="Toggle theme">☀</button>
+      <!-- Auth chip (hidden until signed in) -->
+      <div id="userChip" class="user-chip hidden">
+        <img id="userAvatar" src="" alt="" width="28" height="28" />
+        <span id="userName"></span>
+        <button id="signOutBtn" class="btn btn-ghost" title="Sign out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════ LAYOUT ════════════════════════════ -->
+  <div class="layout">
+
+    <!-- ─────────── SIDEBAR ─────────── -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3>Status</h3>
+        <label class="filter-chip" data-group="status" data-value="all">
+          <input type="radio" name="status" value="all" checked /> All
+        </label>
+        <label class="filter-chip status-new" data-group="status" data-value="new">
+          <input type="radio" name="status" value="new" /> New
+        </label>
+        <label class="filter-chip status-contacted" data-group="status" data-value="contacted">
+          <input type="radio" name="status" value="contacted" /> Contacted
+        </label>
+        <label class="filter-chip status-hot" data-group="status" data-value="hot">
+          <input type="radio" name="status" value="hot" /> 🔥 Hot
+        </label>
+        <label class="filter-chip status-warm" data-group="status" data-value="warm">
+          <input type="radio" name="status" value="warm" /> 🌤 Warm
+        </label>
+        <label class="filter-chip status-cold" data-group="status" data-value="cold">
+          <input type="radio" name="status" value="cold" /> 🧊 Cold
+        </label>
+        <label class="filter-chip status-closed" data-group="status" data-value="closed">
+          <input type="radio" name="status" value="closed" /> ✓ Closed
+        </label>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Funding</h3>
+        <div id="fundingFilters" class="filter-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Top Industries</h3>
+        <div id="industryFilters" class="filter-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Sort By</h3>
+        <select id="sortSelect">
+          <option value="rank_asc">CB Rank ↑ (Best first)</option>
+          <option value="rank_desc">CB Rank ↓</option>
+          <option value="name_asc">Name A → Z</option>
+          <option value="name_desc">Name Z → A</option>
+          <option value="status">Status</option>
+          <option value="recent">Recently Updated</option>
+        </select>
+      </div>
+
+      <div class="sidebar-stats">
+        <div class="stat"><span id="statTotal">0</span><small>total</small></div>
+        <div class="stat"><span id="statShowing">0</span><small>showing</small></div>
+        <div class="stat"><span id="statTracked">0</span><small>tracked</small></div>
+      </div>
+    </aside>
+
+    <!-- ─────────── MAIN LIST ─────────── -->
+    <main class="main">
+      <div id="leadsContainer" class="leads-grid"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <p>No leads match your filters.</p>
+      </div>
+      <div id="loadMore" class="load-more hidden">
+        <button id="loadMoreBtn" class="btn btn-primary">Load more</button>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ═══════════════════════════ DETAIL PANEL ══════════════════════ -->
+  <div id="overlay" class="overlay hidden"></div>
+  <aside id="detailPanel" class="detail-panel hidden">
+    <button class="close-btn" id="closePanel">✕</button>
+
+    <div class="detail-header">
+      <div>
+        <h2 id="dpName"></h2>
+        <p id="dpLocation" class="dp-meta"></p>
+      </div>
+      <span id="dpRankBadge" class="rank-badge"></span>
+    </div>
+
+    <div id="dpIndustries" class="tag-list"></div>
+
+    <p id="dpDescription" class="dp-description"></p>
+
+    <div class="dp-funding-row">
+      <span id="dpFunding" class="funding-badge hidden"></span>
+    </div>
+
+    <!-- Status selector -->
+    <div class="dp-field-group">
+      <label>Status</label>
+      <div class="status-picker" id="statusPicker">
+        <button data-status="new">New</button>
+        <button data-status="contacted">Contacted</button>
+        <button data-status="hot">🔥 Hot</button>
+        <button data-status="warm">🌤 Warm</button>
+        <button data-status="cold">🧊 Cold</button>
+        <button data-status="closed">✓ Closed</button>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="dp-field-group">
+      <label>Contact Name</label>
+      <input id="dpContactName" type="text" placeholder="e.g. Jane Doe, CTO" />
+    </div>
+    <div class="dp-field-group">
+      <label>Contact Email / LinkedIn</label>
+      <input id="dpContactEmail" type="text" placeholder="email or profile URL" />
+    </div>
+
+    <!-- Notes -->
+    <div class="dp-field-group">
+      <label>Notes</label>
+      <textarea id="dpNotes" rows="5" placeholder="Write anything — follow-up dates, conversations, ideas…"></textarea>
+    </div>
+
+    <!-- Last updated -->
+    <p id="dpUpdated" class="dp-updated"></p>
+
+    <button id="dpSave" class="btn btn-primary full-width">Save</button>
+  </aside>
+
+  <!-- Firebase SDK (modular via CDN compat build) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Your Firebase config — fill in after creating your project -->
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
