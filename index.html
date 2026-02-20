@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leads — Maruf Ahmed</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════ TOP BAR ═══════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="logo">⚡ Leads</span>
+      <span class="tagline">Maruf Ahmed · Contractor Outreach</span>
+    </div>
+    <div class="topbar-right">
+      <div class="search-wrap">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.7"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <input id="searchInput" type="text" placeholder="Search company, industry, location…" autocomplete="off" />
+      </div>
+      <button id="exportBtn" class="btn btn-ghost" title="Export tracked leads as JSON">⬇ Export</button>
+      <button id="themeToggle" class="btn btn-ghost" title="Toggle theme">☀</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════ LAYOUT ════════════════════════════ -->
+  <div class="layout">
+
+    <!-- ─────────── SIDEBAR ─────────── -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3>Status</h3>
+        <label class="filter-chip" data-group="status" data-value="all">
+          <input type="radio" name="status" value="all" checked /> All
+        </label>
+        <label class="filter-chip status-new" data-group="status" data-value="new">
+          <input type="radio" name="status" value="new" /> New
+        </label>
+        <label class="filter-chip status-contacted" data-group="status" data-value="contacted">
+          <input type="radio" name="status" value="contacted" /> Contacted
+        </label>
+        <label class="filter-chip status-hot" data-group="status" data-value="hot">
+          <input type="radio" name="status" value="hot" /> 🔥 Hot
+        </label>
+        <label class="filter-chip status-warm" data-group="status" data-value="warm">
+          <input type="radio" name="status" value="warm" /> 🌤 Warm
+        </label>
+        <label class="filter-chip status-cold" data-group="status" data-value="cold">
+          <input type="radio" name="status" value="cold" /> 🧊 Cold
+        </label>
+        <label class="filter-chip status-closed" data-group="status" data-value="closed">
+          <input type="radio" name="status" value="closed" /> ✓ Closed
+        </label>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Funding</h3>
+        <div id="fundingFilters" class="filter-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Top Industries</h3>
+        <div id="industryFilters" class="filter-list"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Sort By</h3>
+        <select id="sortSelect">
+          <option value="rank_asc">CB Rank ↑ (Best first)</option>
+          <option value="rank_desc">CB Rank ↓</option>
+          <option value="name_asc">Name A → Z</option>
+          <option value="name_desc">Name Z → A</option>
+          <option value="status">Status</option>
+          <option value="recent">Recently Updated</option>
+        </select>
+      </div>
+
+      <div class="sidebar-stats">
+        <div class="stat"><span id="statTotal">0</span><small>total</small></div>
+        <div class="stat"><span id="statShowing">0</span><small>showing</small></div>
+        <div class="stat"><span id="statTracked">0</span><small>tracked</small></div>
+      </div>
+    </aside>
+
+    <!-- ─────────── MAIN LIST ─────────── -->
+    <main class="main">
+      <div id="leadsContainer" class="leads-grid"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <p>No leads match your filters.</p>
+      </div>
+      <div id="loadMore" class="load-more hidden">
+        <button id="loadMoreBtn" class="btn btn-primary">Load more</button>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ═══════════════════════════ DETAIL PANEL ══════════════════════ -->
+  <div id="overlay" class="overlay hidden"></div>
+  <aside id="detailPanel" class="detail-panel hidden">
+    <button class="close-btn" id="closePanel">✕</button>
+
+    <div class="detail-header">
+      <div>
+        <h2 id="dpName"></h2>
+        <p id="dpLocation" class="dp-meta"></p>
+      </div>
+      <span id="dpRankBadge" class="rank-badge"></span>
+    </div>
+
+    <div id="dpIndustries" class="tag-list"></div>
+
+    <p id="dpDescription" class="dp-description"></p>
+
+    <div class="dp-funding-row">
+      <span id="dpFunding" class="funding-badge hidden"></span>
+    </div>
+
+    <!-- Status selector -->
+    <div class="dp-field-group">
+      <label>Status</label>
+      <div class="status-picker" id="statusPicker">
+        <button data-status="new">New</button>
+        <button data-status="contacted">Contacted</button>
+        <button data-status="hot">🔥 Hot</button>
+        <button data-status="warm">🌤 Warm</button>
+        <button data-status="cold">🧊 Cold</button>
+        <button data-status="closed">✓ Closed</button>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="dp-field-group">
+      <label>Contact Name</label>
+      <input id="dpContactName" type="text" placeholder="e.g. Jane Doe, CTO" />
+    </div>
+    <div class="dp-field-group">
+      <label>Contact Email / LinkedIn</label>
+      <input id="dpContactEmail" type="text" placeholder="email or profile URL" />
+    </div>
+
+    <!-- Notes -->
+    <div class="dp-field-group">
+      <label>Notes</label>
+      <textarea id="dpNotes" rows="5" placeholder="Write anything — follow-up dates, conversations, ideas…"></textarea>
+    </div>
+
+    <!-- Last updated -->
+    <p id="dpUpdated" class="dp-updated"></p>
+
+    <button id="dpSave" class="btn btn-primary full-width">Save</button>
+  </aside>
+
+  <script src="app.js"></script>
+</body>
+</html>
