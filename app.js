@@ -11,6 +11,7 @@ const PAGE_SIZE = 50;
 let auth = null;
 let db = null;
 let currentUser = null;
+let appBooted = false;   // guard: only boot once
 
 // Detect whether firebase-config.js has real values
 function firebaseReady() {
@@ -60,10 +61,14 @@ function initFirebaseAuth() {
         if (user) {
             currentUser = user;
             showApp(user);
-            await loadUserDataFirestore();
-            bootApp();
+            if (!appBooted) {
+                appBooted = true;
+                await loadUserDataFirestore();
+                bootApp();
+            }
         } else {
             currentUser = null;
+            appBooted = false;
             showLoginScreen();
         }
     });
@@ -84,10 +89,14 @@ function initFirebaseAuth() {
 function showLoginScreen() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('userChip').classList.add('hidden');
+    document.querySelector('.topbar').classList.add('hidden');
+    document.querySelector('.layout').classList.add('hidden');
 }
 
 function showApp(user) {
     document.getElementById('loginScreen').classList.add('hidden');
+    document.querySelector('.topbar').classList.remove('hidden');
+    document.querySelector('.layout').classList.remove('hidden');
     if (user) {
         document.getElementById('userChip').classList.remove('hidden');
         const avatar = document.getElementById('userAvatar');
