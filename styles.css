@@ -800,3 +800,119 @@ button {
         display: none;
     }
 }
+
+/* ══════════════════════════════════════════════════════
+   AUTH — LOGIN SCREEN
+══════════════════════════════════════════════════════ */
+.login-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-screen.hidden {
+    display: none;
+}
+
+.login-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 2.5rem 2.8rem;
+    text-align: center;
+    width: 340px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+}
+
+.login-logo {
+    font-size: 2.8rem;
+    margin-bottom: 0.4rem;
+}
+
+.login-card h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+    color: var(--text);
+}
+
+.login-sub {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 1.8rem;
+}
+
+.btn-google {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 1.4rem;
+    background: #fff;
+    color: #3c4043;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: box-shadow var(--transition), background var(--transition);
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-google:hover {
+    background: #f8f9fa;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.login-hint {
+    margin-top: 1.2rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════════
+   AUTH — USER CHIP IN TOPBAR
+══════════════════════════════════════════════════════ */
+.user-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem 0.2rem 0.3rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+}
+
+.user-chip.hidden {
+    display: none;
+}
+
+.user-chip img {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+}
+
+#userName {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#signOutBtn {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-left: 1px solid var(--border);
+    margin-left: 0.3rem;
+    color: var(--text-muted);
+}

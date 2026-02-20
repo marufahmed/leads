@@ -1,18 +1,32 @@
 /* ── app.js ──────────────────────────────────────────────────────────────────
    Leads Management — Maruf Ahmed
-   All user data (status, contacts, notes) is stored in localStorage so the
-   site works fully on GitHub Pages with no backend.
+   Auth  : Firebase Google Sign-In
+   Storage : Firestore  /users/{uid}/leads/{companyName}
+             Falls back to localStorage if Firebase isn't configured yet.
 ────────────────────────────────────────────────────────────────────────────── */
 
-const STORAGE_KEY = 'maruf_leads_v1';
 const PAGE_SIZE = 50;
+
+/* ── Firebase handles ───────────────────────────────────────────────────────── */
+let auth = null;
+let db = null;
+let currentUser = null;
+
+// Detect whether firebase-config.js has real values
+function firebaseReady() {
+    try {
+        return firebase.apps.length > 0
+            && firebase.app().options.apiKey !== 'PASTE_YOUR_API_KEY';
+    } catch { return false; }
+}
 
 /* ── State ─────────────────────────────────────────────────────────────────── */
 let allLeads = [];   // raw from leads.json
 let userData = {};   // { [name]: { status, contactName, contactEmail, notes, updatedAt } }
 let filtered = [];   // currently visible (after filter + sort)
 let page = 1;
-let activeLeadId = null; // name of the open detail panel lead
+let activeLeadId = null;
+let saveTimer = null; // debounce Firestore writes
 
 let filters = {
     status: 'all',
@@ -23,13 +37,79 @@ let filters = {
 };
 
 /* ── Bootstrap ─────────────────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', async () => {
-    loadUserData();
+document.addEventListener('DOMContentLoaded', () => {
+    if (firebaseReady()) {
+        auth = firebase.auth();
+        db = firebase.firestore();
+        initFirebaseAuth();
+    } else {
+        // Firebase not configured — run in local-only mode
+        console.warn('Firebase not configured. Running in localStorage-only mode.');
+        showApp(null);
+        loadUserDataLocal();
+        bootApp();
+    }
+});
+
+/* ── Firebase Auth ──────────────────────────────────────────────────────────── */
+function initFirebaseAuth() {
+    // Show the login screen while we wait for auth state
+    document.getElementById('loginScreen').classList.remove('hidden');
+
+    auth.onAuthStateChanged(async user => {
+        if (user) {
+            currentUser = user;
+            showApp(user);
+            await loadUserDataFirestore();
+            bootApp();
+        } else {
+            currentUser = null;
+            showLoginScreen();
+        }
+    });
+
+    document.getElementById('googleSignInBtn').addEventListener('click', () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => {
+            console.error('Sign-in error', err);
+            alert('Sign-in failed: ' + err.message);
+        });
+    });
+
+    document.getElementById('signOutBtn').addEventListener('click', () => {
+        auth.signOut();
+    });
+}
+
+function showLoginScreen() {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('userChip').classList.add('hidden');
+}
+
+function showApp(user) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    if (user) {
+        document.getElementById('userChip').classList.remove('hidden');
+        const avatar = document.getElementById('userAvatar');
+        if (user.photoURL) {
+            avatar.src = user.photoURL;
+            avatar.style.display = 'block';
+        } else {
+            avatar.style.display = 'none';
+        }
+        document.getElementById('userName').textContent = user.displayName || user.email;
+    } else {
+        document.getElementById('userChip').classList.add('hidden');
+    }
+}
+
+/* ── Boot (after auth + data load) ─────────────────────────────────────────── */
+async function bootApp() {
     await loadLeads();
     buildSidebarFilters();
     attachEventListeners();
     applyFilters();
-});
+}
 
 /* ── Load leads.json ───────────────────────────────────────────────────────── */
 async function loadLeads() {
@@ -39,21 +119,55 @@ async function loadLeads() {
         allLeads = data.companies || [];
     } catch (e) {
         console.error('Could not load leads.json', e);
-        document.getElementById('emptyState').textContent =
-            '⚠ Could not load leads.json. Make sure the file is in the same folder.';
-        document.getElementById('emptyState').classList.remove('hidden');
+        const el = document.getElementById('emptyState');
+        el.textContent = '⚠ Could not load leads.json. Make sure the file is in the same folder.';
+        el.classList.remove('hidden');
     }
 }
 
-/* ── localStorage helpers ──────────────────────────────────────────────────── */
-function loadUserData() {
+/* ── Firestore helpers ──────────────────────────────────────────────────────── */
+async function loadUserDataFirestore() {
+    if (!db || !currentUser) return;
     try {
-        userData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-    } catch { userData = {}; }
+        const col = db.collection('users').doc(currentUser.uid).collection('leads');
+        const snap = await col.get();
+        userData = {};
+        snap.forEach(doc => { userData[doc.id] = doc.data(); });
+    } catch (e) {
+        console.error('Firestore load error', e);
+        // Fall back to localStorage so the user isn't blocked
+        loadUserDataLocal();
+    }
 }
 
-function saveUserData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+function saveToFirestore(name, data) {
+    if (!db || !currentUser) { saveUserDataLocal(); return; }
+    db.collection('users').doc(currentUser.uid)
+        .collection('leads').doc(name)
+        .set(data, { merge: true })
+        .catch(e => console.error('Firestore save error', e));
+}
+
+/* ── localStorage fallback ──────────────────────────────────────────────────── */
+const LS_KEY = 'maruf_leads_v1';
+
+function loadUserDataLocal() {
+    try { userData = JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+    catch { userData = {}; }
+}
+
+function saveUserDataLocal() {
+    localStorage.setItem(LS_KEY, JSON.stringify(userData));
+}
+
+/* ── Unified save ────────────────────────────────────────────────────────────── */
+function persistLead(name, data) {
+    userData[name] = data;
+    if (firebaseReady() && currentUser) {
+        saveToFirestore(name, data);
+    } else {
+        saveUserDataLocal();
+    }
 }
 
 function getLeadData(name) {
@@ -109,19 +223,14 @@ function applyFilters() {
     filtered = allLeads.filter(lead => {
         const ld = getLeadData(lead.name);
 
-        // Status filter
         if (filters.status !== 'all' && ld.status !== filters.status) return false;
-
-        // Funding filter
         if (filters.funding.size > 0 && !filters.funding.has(lead.funding_stage)) return false;
 
-        // Industry filter
         if (filters.industries.size > 0) {
             const inds = new Set(lead.industries || []);
             if (![...filters.industries].some(i => inds.has(i))) return false;
         }
 
-        // Search
         if (q) {
             const hay = [
                 lead.name,
@@ -137,7 +246,6 @@ function applyFilters() {
         return true;
     });
 
-    // Sort
     const STATUS_ORDER = { hot: 0, warm: 1, contacted: 2, new: 3, cold: 4, closed: 5 };
     filtered.sort((a, b) => {
         switch (filters.sort) {
@@ -153,7 +261,7 @@ function applyFilters() {
             case 'recent': {
                 const ta = getLeadData(a.name).updatedAt || 0;
                 const tb = getLeadData(b.name).updatedAt || 0;
-                return tb - ta;  // most recent first
+                return tb - ta;
             }
             default: return 0;
         }
@@ -188,11 +296,7 @@ function renderLeads() {
     const slice = filtered.slice(0, page * PAGE_SIZE);
     slice.forEach(lead => container.appendChild(buildCard(lead)));
 
-    if (slice.length < filtered.length) {
-        loadMore.classList.remove('hidden');
-    } else {
-        loadMore.classList.add('hidden');
-    }
+    loadMore.classList.toggle('hidden', slice.length >= filtered.length);
 }
 
 function buildCard(lead) {
@@ -236,7 +340,6 @@ function openPanel(name) {
     const ld = getLeadData(name);
     if (!lead) return;
 
-    // Populate static fields
     document.getElementById('dpName').textContent = lead.name;
     document.getElementById('dpLocation').textContent = lead.location || '';
     document.getElementById('dpRankBadge').textContent = `#${lead.crunchbase_rank.toLocaleString()}`;
@@ -253,23 +356,19 @@ function openPanel(name) {
         fundingEl.classList.add('hidden');
     }
 
-    // Populate user data
     document.getElementById('dpContactName').value = ld.contactName || '';
     document.getElementById('dpContactEmail').value = ld.contactEmail || '';
     document.getElementById('dpNotes').value = ld.notes || '';
 
-    // Status picker
     document.querySelectorAll('#statusPicker button').forEach(btn => {
         btn.classList.toggle('active-status', btn.dataset.status === (ld.status || 'new'));
     });
 
-    // Updated timestamp
     const updEl = document.getElementById('dpUpdated');
     updEl.textContent = ld.updatedAt
         ? `Last updated: ${new Date(ld.updatedAt).toLocaleString()}`
         : '';
 
-    // Show panel
     document.getElementById('detailPanel').classList.remove('hidden');
     document.getElementById('overlay').classList.remove('hidden');
     document.getElementById('dpContactName').focus();
@@ -284,8 +383,7 @@ function closePanel() {
 function savePanel() {
     if (!activeLeadId) return;
     const existing = getLeadData(activeLeadId);
-
-    userData[activeLeadId] = {
+    const data = {
         status: existing.status || 'new',
         contactName: document.getElementById('dpContactName').value.trim(),
         contactEmail: document.getElementById('dpContactEmail').value.trim(),
@@ -293,16 +391,15 @@ function savePanel() {
         updatedAt: Date.now(),
     };
 
-    saveUserData();
+    persistLead(activeLeadId, data);
 
-    // Refresh timestamp in panel
     document.getElementById('dpUpdated').textContent =
         `Last updated: ${new Date().toLocaleString()}`;
 
-    // Update the card in the list without full re-render
+    // Update card in-place
     const card = document.querySelector(`.lead-card[data-name="${CSS.escape(activeLeadId)}"]`);
     if (card) {
-        const status = userData[activeLeadId].status || 'new';
+        const status = data.status;
         card.className = `lead-card status-${status}`;
         card.querySelector('.status-pill').className = `status-pill status-${status}`;
         card.querySelector('.status-pill').textContent = statusLabel(status);
@@ -310,22 +407,17 @@ function savePanel() {
 
     updateStats();
 
-    // Flash the save button
     const btn = document.getElementById('dpSave');
     btn.textContent = '✓ Saved';
     btn.style.background = 'var(--c-closed)';
-    setTimeout(() => {
-        btn.textContent = 'Save';
-        btn.style.background = '';
-    }, 1200);
+    setTimeout(() => { btn.textContent = 'Save'; btn.style.background = ''; }, 1400);
 }
 
 /* ── Event Listeners ───────────────────────────────────────────────────────── */
 function attachEventListeners() {
     // Search
-    const searchInput = document.getElementById('searchInput');
     let debounceTimer;
-    searchInput.addEventListener('input', e => {
+    document.getElementById('searchInput').addEventListener('input', e => {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             filters.search = e.target.value.trim();
@@ -343,8 +435,8 @@ function attachEventListeners() {
             applyFilters();
         });
     });
-    // Mark "All" as initially active
-    document.querySelector('.filter-chip input[value="all"]').closest('.filter-chip').classList.add('active');
+    document.querySelector('.filter-chip input[value="all"]')
+        .closest('.filter-chip').classList.add('active');
 
     // Sort
     document.getElementById('sortSelect').addEventListener('change', e => {
@@ -364,12 +456,12 @@ function attachEventListeners() {
             const newStatus = btn.dataset.status;
             if (!activeLeadId) return;
             const ld = getLeadData(activeLeadId);
-            ld.status = newStatus;
-            userData[activeLeadId] = { ...ld, updatedAt: Date.now() };
-            saveUserData();
+            const data = { ...ld, status: newStatus, updatedAt: Date.now() };
+            persistLead(activeLeadId, data);
+
             document.querySelectorAll('#statusPicker button').forEach(b =>
                 b.classList.toggle('active-status', b.dataset.status === newStatus));
-            // Update card border immediately
+
             const card = document.querySelector(`.lead-card[data-name="${CSS.escape(activeLeadId)}"]`);
             if (card) {
                 card.className = `lead-card status-${newStatus}`;
@@ -380,15 +472,10 @@ function attachEventListeners() {
         });
     });
 
-    // Save + close
     document.getElementById('dpSave').addEventListener('click', savePanel);
     document.getElementById('closePanel').addEventListener('click', closePanel);
     document.getElementById('overlay').addEventListener('click', closePanel);
-
-    // Keyboard: Escape closes panel
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closePanel();
-    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
 
     // Theme toggle
     const themeBtn = document.getElementById('themeToggle');
@@ -403,13 +490,15 @@ function attachEventListeners() {
         localStorage.setItem('maruf_leads_theme', next);
     });
 
-    // Export tracked leads
+    // Export
     document.getElementById('exportBtn').addEventListener('click', () => {
         const tracked = allLeads
             .filter(l => userData[l.name])
             .map(l => ({ ...l, ...userData[l.name] }));
-        const blob = new Blob([JSON.stringify({ total: tracked.length, leads: tracked }, null, 2)],
-            { type: 'application/json' });
+        const blob = new Blob(
+            [JSON.stringify({ total: tracked.length, leads: tracked }, null, 2)],
+            { type: 'application/json' }
+        );
         const url = URL.createObjectURL(blob);
         const a = Object.assign(document.createElement('a'), {
             href: url,

@@ -1,0 +1,8 @@
+# Firebase config contains real credentials — never commit this
+firebase-config.js
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
